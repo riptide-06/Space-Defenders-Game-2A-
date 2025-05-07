@@ -16,6 +16,14 @@ export class GameScene extends Phaser.Scene {
         this.screenWidth = this.sys.game.config.width;
         this.screenHeight = this.sys.game.config.height;
 
+        // Create bounds for enemies
+        this.enemyBounds = {
+            top: 50,
+            bottom: this.screenHeight * 0.7,
+            left: 30,
+            right: this.screenWidth - 30
+        };
+
         this.player = this.physics.add.sprite(this.screenWidth / 2, this.screenHeight - 50, 'player');
         this.player.setCollideWorldBounds(true);
         this.player.setScale(0.5);
@@ -99,6 +107,26 @@ export class GameScene extends Phaser.Scene {
 
     updateEnemies() {
         this.enemies.getChildren().forEach(enemy => {
+            // Only apply bounds to non-civilian ships
+            if (enemy.enemyType !== 'civilian') {
+                if (enemy.x < this.enemyBounds.left) {
+                    enemy.x = this.enemyBounds.left;
+                    if (enemy.body.velocity.x < 0) enemy.body.velocity.x *= -1;
+                }
+                if (enemy.x > this.enemyBounds.right) {
+                    enemy.x = this.enemyBounds.right;
+                    if (enemy.body.velocity.x > 0) enemy.body.velocity.x *= -1;
+                }
+                if (enemy.y < this.enemyBounds.top) {
+                    enemy.y = this.enemyBounds.top;
+                    if (enemy.body.velocity.y < 0) enemy.body.velocity.y *= -1;
+                }
+                if (enemy.y > this.enemyBounds.bottom) {
+                    enemy.y = this.enemyBounds.bottom;
+                    if (enemy.body.velocity.y > 0) enemy.body.velocity.y *= -1;
+                }
+            }
+
             if (enemy.y >= this.screenHeight * 0.3 && enemy.enemyType !== 'civilian') {
                 enemy.setVelocityY(-25);
             }
@@ -126,6 +154,7 @@ export class GameScene extends Phaser.Scene {
                 this.updateFrigateMovement(enemy);
             }
 
+            // Only destroy civilians if they go below the screen
             if (enemy.enemyType === 'civilian' && enemy.y > this.screenHeight) {
                 enemy.destroy();
             }
@@ -168,9 +197,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     updateFrigateMovement(frigate) {
-        if (frigate.x >= this.screenWidth - 100) {
+        if (frigate.x >= this.enemyBounds.right) {
             frigate.setVelocityX(-50);
-        } else if (frigate.x <= 100) {
+        } else if (frigate.x <= this.enemyBounds.left) {
             frigate.setVelocityX(50);
         }
 
@@ -183,10 +212,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     spawnFighters(count) {
-        const spacing = this.screenWidth / (count + 1);
+        const spacing = (this.enemyBounds.right - this.enemyBounds.left) / (count + 1);
         for (let i = 0; i < count; i++) {
-            const x = spacing * (i + 1);
-            const enemy = this.enemies.create(x, 50, 'fighter');
+            const x = this.enemyBounds.left + spacing * (i + 1);
+            const enemy = this.enemies.create(x, this.enemyBounds.top, 'fighter');
             enemy.enemyType = 'fighter';
             enemy.health = 35;
             enemy.setVelocityY(25);
@@ -197,10 +226,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     spawnStarships(count) {
-        const spacing = this.screenWidth / (count + 1);
+        const spacing = (this.enemyBounds.right - this.enemyBounds.left) / (count + 1);
         for (let i = 0; i < count; i++) {
-            const x = spacing * (i + 1);
-            const enemy = this.enemies.create(x, 50, 'starship');
+            const x = this.enemyBounds.left + spacing * (i + 1);
+            const enemy = this.enemies.create(x, this.enemyBounds.top, 'starship');
             enemy.enemyType = 'starship';
             enemy.health = 140;
             enemy.setVelocityY(20);
@@ -210,10 +239,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     spawnBandits(count) {
-        const spacing = this.screenWidth / (count + 1);
+        const spacing = (this.enemyBounds.right - this.enemyBounds.left) / (count + 1);
         for (let i = 0; i < count; i++) {
-            const x = spacing * (i + 1);
-            const enemy = this.enemies.create(x, 50, 'bandit');
+            const x = this.enemyBounds.left + spacing * (i + 1);
+            const enemy = this.enemies.create(x, this.enemyBounds.top, 'bandit');
             enemy.enemyType = 'bandit';
             enemy.health = 105;
             enemy.setVelocityY(30);
@@ -239,8 +268,9 @@ export class GameScene extends Phaser.Scene {
             fighter.patternOffset = Phaser.Math.Between(0, 200);
         }
         
-        if (fighter.y >= 50 && fighter.y <= this.screenHeight * 0.3) {
-            fighter.x = fighter.originalX + Math.sin((fighter.y + fighter.patternOffset) / 40) * 120;
+        if (fighter.y >= this.enemyBounds.top && fighter.y <= this.enemyBounds.bottom) {
+            const newX = fighter.originalX + Math.sin((fighter.y + fighter.patternOffset) / 40) * 120;
+            fighter.x = Phaser.Math.Clamp(newX, this.enemyBounds.left, this.enemyBounds.right);
         }
     }
 
